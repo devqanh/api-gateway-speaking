@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Luyện giao tiếp AI</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="school-header">
+      <div class="brand-block">
+        <img src="/assets/coach-avatar.png" alt="" class="brand-avatar">
+        <div>
+          <strong>topID Speak</strong>
+          <span>Luyện nói cùng AI mỗi ngày</span>
+        </div>
+      </div>
+      <nav class="student-nav" aria-label="Điều hướng">
+        <a href="#practice">Luyện nói</a>
+        <a href="#transcript">Transcript</a>
+        <a href="#settings">Cài đặt</a>
+      </nav>
+      <div class="status-cluster">
+        <span id="serverStatus" class="status-pill status-wait">Đang kiểm tra</span>
+        <span id="connectionStatus" class="status-pill">Chưa kết nối</span>
+      </div>
+    </header>
+
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">AI speaking class</p>
+          <h1>Hôm nay mình nói tiếng Anh nhé</h1>
+        </div>
+        <div class="streak-card" aria-label="Tiến độ học">
+          <strong>Buổi 1</strong>
+          <span>14 thử thách nhỏ</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside id="settings" class="control-panel" aria-label="Cấu hình buổi luyện">
+          <div class="coach-card">
+            <img src="/assets/coach-avatar.png" alt="" class="coach-avatar">
+            <div>
+              <p class="eyebrow">Coach AI</p>
+              <h2>Nhấn mic và nói thử thôi</h2>
+              <p>AI sẽ hỏi ngắn, sửa nhẹ, và lưu phụ đề để xem lại.</p>
+            </div>
+          </div>
+
+          <section class="panel-section">
+            <label for="goalLanguage">Ngôn ngữ luyện</label>
+            <select id="goalLanguage">
+              <option value="english" selected>Tiếng Anh</option>
+              <option value="vietnamese">Tiếng Việt</option>
+              <option value="japanese">Tiếng Nhật</option>
+              <option value="korean">Tiếng Hàn</option>
+              <option value="chinese">Tiếng Trung</option>
+              <option value="french">Tiếng Pháp</option>
+            </select>
+          </section>
+
+          <section class="panel-section">
+            <label for="level">Trình độ</label>
+            <select id="level">
+              <option value="beginner">Mới bắt đầu A1-A2</option>
+              <option value="elementary">Cơ bản A2-B1</option>
+              <option value="intermediate">Trung cấp B1-B2</option>
+              <option value="advanced">Nâng cao C1</option>
+            </select>
+          </section>
+
+          <section class="panel-section">
+            <label for="topic">Chủ đề</label>
+            <select id="topic">
+              <option value="daily">Đời sống hằng ngày</option>
+              <option value="travel">Du lịch</option>
+              <option value="work">Công việc</option>
+              <option value="interview">Phỏng vấn</option>
+              <option value="shopping">Mua sắm, nhà hàng</option>
+              <option value="ielts">IELTS Speaking</option>
+              <option value="custom">Tự nhập</option>
+            </select>
+            <input id="customTopic" class="hidden" type="text" maxlength="90" placeholder="Ví dụ: đặt lịch khám răng">
+          </section>
+
+          <section class="panel-section">
+            <label for="correctionStyle">Cách sửa lỗi</label>
+            <select id="correctionStyle">
+              <option value="gentle">Nhẹ nhàng sau mỗi ý</option>
+              <option value="instant">Sửa nhanh khi cần</option>
+              <option value="recap">Tổng kết sau vài lượt</option>
+            </select>
+          </section>
+
+          <section class="voice-speed-section">
+            <div class="voice-control">
+              <label for="voice">Giọng</label>
+              <div class="voice-picker">
+                <select id="voice">
+                  <option value="mai" selected>Cô Mai - ấm áp</option>
+                  <option value="nam">Thầy Nam - trầm ấm</option>
+                  <option value="san">Cô San - vui vẻ</option>
+                  <option value="minh">Thầy Minh - điềm tĩnh</option>
+                  <option value="van">Bạn Vân - kể chuyện</option>
+                  <option value="an">Bạn An - sáng rõ</option>
+                  <option value="khanh">Bạn Khánh - năng động</option>
+                  <option value="linh">Cô Linh - dịu dàng</option>
+                  <option value="long">Bạn Long - rõ vang</option>
+                  <option value="ngoc">Bạn Ngọc - thân thiện</option>
+                </select>
+                <button id="previewVoiceBtn" class="preview-voice-button" type="button" aria-label="Nghe thử giọng" title="Nghe thử">
+                  <svg viewBox="0 0 24 24"><path d="m5 3 14 9-14 9V3Z"/></svg>
+                </button>
+              </div>
+              <p id="voiceMeta" class="voice-meta">Cô Mai - ấm áp, rõ ràng</p>
+            </div>
+
+            <div class="speed-control">
+              <label for="speed">Tốc độ</label>
+              <div class="speed-row">
+                <input id="speed" type="range" min="0.75" max="1.2" step="0.05" value="1">
+                <span id="speedValue" class="speed-value">1.00x</span>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section id="practice" class="practice-stage" aria-label="Buổi hội thoại">
+          <div class="stage-header">
+            <div>
+              <p class="eyebrow">Câu 1 / 14</p>
+              <h2 id="sessionTitle">Đời sống hằng ngày</h2>
+            </div>
+            <div class="lesson-progress" aria-hidden="true">
+              <span></span>
+            </div>
+            <button id="clearBtn" class="small-button" type="button">Xóa transcript</button>
+          </div>
+
+          <div class="conversation-board">
+            <div class="conversation-board-header">
+              <div>
+                <p class="eyebrow">Hội thoại đang diễn ra</p>
+                <strong>Tự cuộn theo câu mới nhất</strong>
+              </div>
+              <span class="live-dot" aria-hidden="true"></span>
+            </div>
+
+            <div class="subtitle-strip compact-subtitles" aria-live="polite" aria-label="Phụ đề hội thoại">
+              <article class="subtitle-line user-caption">
+                <span>Đang nghe bạn</span>
+                <p id="liveUserCaption">Chưa có thoại</p>
+              </article>
+              <article class="subtitle-line ai-caption">
+                <span>AI đang trả lời</span>
+                <p id="liveAiCaption">Chưa có thoại</p>
+              </article>
+            </div>
+
+            <div id="transcript" class="transcript" aria-live="polite">
+              <article class="message system-message">
+                <div class="message-avatar ai-avatar" aria-hidden="true"></div>
+                <div class="bubble-content">
+                  <span>AI</span>
+                  <p>Sẵn sàng cho phiên luyện nói.</p>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <div class="practice-dock actions">
+            <button id="clearBtnDuplicate" class="dock-secondary ghost-control" type="button" aria-label="Xem lại transcript" title="Transcript">
+              <svg viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h13"/><path d="M4 18h9"/></svg>
+              Transcript
+            </button>
+            <button id="startBtn" class="primary-action" type="button">
+              <span class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
+              </span>
+              <span id="startBtnLabel">Bắt đầu nói</span>
+            </button>
+            <div class="voice-surface dock-wave" aria-label="Âm lượng mic">
+              <canvas id="waveform" width="180" height="54"></canvas>
+              <div class="meter-row" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <button id="muteBtn" class="icon-button" type="button" aria-label="Tắt mic" title="Tắt mic" disabled>
+              <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
+            </button>
+            <button id="stopBtn" class="icon-button danger" type="button" aria-label="Dừng" title="Dừng" disabled>
+              <svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <audio id="remoteAudio" autoplay></audio>
+    <script src="/app.js"></script>
+  </body>
+</html>

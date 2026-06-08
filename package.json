@@ -1,0 +1,16 @@
+{
+  "name": "giaotiep-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Realtime AI speaking practice app using gpt-realtime-2.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon --watch server.js --watch public --ext js,html,css,json,png server.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
