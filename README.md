@@ -37,3 +37,4 @@ npm start
 Không đưa OpenAI API key vào trình duyệt. App này giữ key ở `server.js`; browser chỉ xin Realtime token tạm thời từ server rồi dùng token đó để bắt tay WebRTC với OpenAI.
 
 Nếu bạn đã dán key vào chat, hãy thu hồi key đó trong OpenAI dashboard và tạo key mới trước khi chạy app.
+# api-gateway-speaking
