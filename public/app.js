@@ -24,7 +24,7 @@ const elements = {
   liveAiCaption: document.getElementById("liveAiCaption"),
   remoteAudio: document.getElementById("remoteAudio"),
   waveform: document.getElementById("waveform"),
-  voiceSurface: document.querySelector(".voice-surface")
+  voiceSurface: document.getElementById("startBtn")
 };
 
 const topicLabels = {
@@ -66,6 +66,7 @@ const voicePreviewCache = new Map();
 const completedAssistantResponses = new Set();
 const recentAssistantTexts = [];
 
+loadSettings();
 checkServer();
 updateVoiceMeta();
 updateSpeedValue();
@@ -80,10 +81,11 @@ elements.customTopic.addEventListener("input", updateSessionTitle);
 elements.voice.addEventListener("change", updateVoiceMeta);
 elements.speed.addEventListener("input", updateSpeedValue);
 elements.previewVoiceBtn.addEventListener("click", previewVoice);
-elements.startBtn.addEventListener("click", startSession);
-elements.stopBtn.addEventListener("click", stopSession);
+elements.startBtn.addEventListener("click", confirmStartSession);
+elements.stopBtn.addEventListener("click", confirmStopSession);
 elements.muteBtn.addEventListener("click", toggleMute);
-elements.clearBtn.addEventListener("click", clearTranscript);
+elements.clearBtn.addEventListener("click", confirmClearTranscript);
+document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
 document.getElementById("clearBtnDuplicate").addEventListener("click", () => {
   elements.transcript.scrollIntoView({ behavior: "smooth", block: "nearest" });
 });
@@ -144,6 +146,23 @@ async function startSession() {
 
     dataChannel.addEventListener("open", () => {
       setStatus(elements.connectionStatus, "Đang chờ AI chào", "ok");
+      
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.addEventListener('mouseenter', Swal.stopTimer);
+          toast.addEventListener('mouseleave', Swal.resumeTimer);
+        }
+      });
+      Toast.fire({
+        icon: 'success',
+        title: 'Đã kết nối thành công với AI lớp học!'
+      });
+
       sendClientEvent({
         type: "response.create",
         response: {
@@ -191,8 +210,39 @@ async function startSession() {
     setStartButtonLabel("Đang luyện");
     setStatus(elements.connectionStatus, "Đang kết nối âm thanh", "wait");
   } catch (error) {
+    const isPermissionError = error.name === "NotAllowedError" || error.name === "PermissionDeniedError" || (error.message && (error.message.includes("denied") || error.message.includes("permission")));
+    
+    if (isPermissionError) {
+      Swal.fire({
+        title: "Quyền truy cập Microphone bị chặn",
+        html: `
+          <div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #475569; font-family: system-ui, -apple-system, sans-serif;">
+            <p style="margin-bottom: 12px; font-weight: 600; color: #1e293b;">Ứng dụng cần quyền sử dụng microphone để nghe bạn phát âm tiếng Anh.</p>
+            <p style="margin-bottom: 8px;"><strong>Cách cấp lại quyền truy cập:</strong></p>
+            <ol style="margin-left: 20px; margin-bottom: 16px;">
+              <li style="margin-bottom: 6px;">Bấm vào biểu tượng <strong>ổ khóa 🔒</strong> hoặc <strong>cài đặt</strong> ở bên trái thanh địa chỉ trình duyệt.</li>
+              <li style="margin-bottom: 6px;">Tìm mục <strong>Microphone</strong> và gạt công tắc sang <strong>Cho phép (Allow)</strong>.</li>
+              <li>Tải lại trang và nhấn nút <strong>Bắt đầu nói</strong> để thử lại nhé!</li>
+            </ol>
+          </div>
+        `,
+        icon: "warning",
+        confirmButtonText: "Đã hiểu",
+        confirmButtonColor: "#6366f1"
+      });
+      setStatus(elements.connectionStatus, "Bị chặn quyền mic", "error");
+    } else {
+      Swal.fire({
+        title: "Lỗi kết nối âm thanh",
+        text: error.message || "Không thể khởi tạo microphone. Hãy kiểm tra lại thiết bị thu âm của bạn.",
+        icon: "error",
+        confirmButtonText: "Đóng",
+        confirmButtonColor: "#6366f1"
+      });
+      setStatus(elements.connectionStatus, "Không kết nối được", "error");
+    }
+    
     appendMessage("system notice", "Lỗi", error.message || "Không thể bắt đầu phiên luyện.");
-    setStatus(elements.connectionStatus, "Không kết nối được", "error");
     stopSession();
   } finally {
     setBusy(false);
@@ -233,7 +283,87 @@ function stopSession() {
   setStartButtonLabel("Bắt đầu nói");
   elements.voiceSurface.classList.remove("is-listening");
   drawIdleWave();
-  setStatus(elements.connectionStatus, "Chưa kết nối");
+}
+
+function confirmStartSession() {
+  if (peerConnection) {
+    return;
+  }
+
+  Swal.fire({
+    title: "Bắt đầu luyện nói?",
+    text: "AI Coach đã sẵn sàng đồng hành cùng bạn. Bạn đã sẵn sàng mở microphone và bắt đầu buổi luyện nói chưa?",
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Sẵn sàng, bắt đầu thôi!",
+    cancelButtonText: "Để sau",
+    confirmButtonColor: "#6366f1",
+    cancelButtonColor: "#94a3b8",
+    customClass: {
+      popup: "premium-swal-popup",
+      confirmButton: "premium-swal-button",
+      cancelButton: "premium-swal-button"
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      startSession();
+    }
+  });
+}
+
+function confirmStopSession() {
+  Swal.fire({
+    title: "Kết thúc buổi luyện nói?",
+    text: "Bạn có chắc chắn muốn kết thúc buổi luyện nói và dừng kết nối với AI không?",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Kết thúc",
+    cancelButtonText: "Luyện tiếp",
+    confirmButtonColor: "#f43f5e",
+    cancelButtonColor: "#6366f1",
+    customClass: {
+      popup: "premium-swal-popup",
+      confirmButton: "premium-swal-button",
+      cancelButton: "premium-swal-button"
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      stopSession();
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'info',
+        title: 'Đã kết thúc buổi luyện nói.',
+        showConfirmButton: false,
+        timer: 2500
+      });
+    }
+  });
+}
+
+function confirmClearTranscript() {
+  Swal.fire({
+    title: "Xóa lịch sử hội thoại?",
+    text: "Tất cả phụ đề đã lưu từ đầu buổi học sẽ bị xóa sạch và không thể khôi phục. Bạn có chắc chắn không?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Xóa sạch",
+    cancelButtonText: "Hủy",
+    confirmButtonColor: "#f43f5e",
+    cancelButtonColor: "#94a3b8"
+  }).then((result) => {
+    if (result.isConfirmed) {
+      clearTranscript();
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Đã xóa lịch sử hội thoại.',
+        showConfirmButton: false,
+        timer: 2000
+      });
+    }
+  });
 }
 
 function toggleMute() {
@@ -261,6 +391,56 @@ function getProfile() {
     voice: elements.voice.value,
     speed: Number(elements.speed.value)
   };
+}
+
+function saveSettings() {
+  const settings = {
+    goalLanguage: elements.goalLanguage.value,
+    level: elements.level.value,
+    topic: elements.topic.value,
+    customTopic: elements.customTopic.value,
+    correctionStyle: elements.correctionStyle.value,
+    voice: elements.voice.value,
+    speed: elements.speed.value
+  };
+  localStorage.setItem("giaotiepai_settings", JSON.stringify(settings));
+
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title: 'Đã lưu cấu hình học tập!',
+    showConfirmButton: false,
+    timer: 2000
+  });
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem("giaotiepai_settings");
+    if (!raw) return;
+    
+    const settings = JSON.parse(raw);
+    if (!settings) return;
+
+    if (settings.goalLanguage) elements.goalLanguage.value = settings.goalLanguage;
+    if (settings.level) elements.level.value = settings.level;
+    if (settings.topic) elements.topic.value = settings.topic;
+    if (settings.customTopic) elements.customTopic.value = settings.customTopic;
+    if (settings.correctionStyle) elements.correctionStyle.value = settings.correctionStyle;
+    if (settings.voice) elements.voice.value = settings.voice;
+    if (settings.speed) elements.speed.value = settings.speed;
+
+    // Trigger UI updates
+    updateVoiceMeta();
+    updateSpeedValue();
+    updateSessionTitle();
+    
+    const isCustom = elements.topic.value === "custom";
+    elements.customTopic.classList.toggle("hidden", !isCustom);
+  } catch (e) {
+    console.error("Failed to load settings:", e);
+  }
 }
 
 async function previewVoice() {
@@ -576,20 +756,40 @@ function markCurrentMessage(message) {
   message.classList.add("is-current");
 }
 
+function smoothScrollTo(element, target, duration = 400) {
+  const start = element.scrollTop;
+  const change = target - start;
+  const startTime = performance.now();
+
+  function animateScroll(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    // EaseOutCubic curve: f(t) = 1 - (1-t)^3
+    const ease = 1 - Math.pow(1 - progress, 3);
+    
+    element.scrollTop = start + change * ease;
+
+    if (progress < 1) {
+      requestAnimationFrame(animateScroll);
+    }
+  }
+
+  requestAnimationFrame(animateScroll);
+}
+
 function scrollTranscript(message) {
   if (message) {
     markCurrentMessage(message);
   }
 
   requestAnimationFrame(() => {
-    if (message && message.isConnected) {
-      message.scrollIntoView({ block: "end", behavior: "smooth" });
-      return;
+    const transcript = elements.transcript;
+    const targetScroll = transcript.scrollHeight - transcript.clientHeight;
+    
+    if (Math.abs(transcript.scrollTop - targetScroll) > 4) {
+      smoothScrollTo(transcript, targetScroll, 400);
     }
-    elements.transcript.scrollTo({
-      top: elements.transcript.scrollHeight,
-      behavior: "smooth"
-    });
   });
 }
 
@@ -661,6 +861,9 @@ function readApiError(text) {
 
 function setupAudioMeter(stream) {
   audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
   const source = audioContext.createMediaStreamSource(stream);
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
@@ -698,25 +901,53 @@ function drawWave(buffer, live) {
   const middle = height / 2;
 
   ctx.clearRect(0, 0, width, height);
-  ctx.lineWidth = live ? 3 : 2;
-  ctx.strokeStyle = live ? "#0ea5e9" : "rgba(14, 165, 233, 0.38)";
-  ctx.beginPath();
 
-  const step = width / (buffer.length - 1);
-  for (let index = 0; index < buffer.length; index += 1) {
-    const value = (buffer[index] - 128) / 128;
-    const x = index * step;
-    const y = middle + value * (height * 0.36);
-    if (index === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
+  if (!live) {
+    return;
   }
 
-  ctx.stroke();
-  ctx.fillStyle = live ? "rgba(51, 199, 173, 0.95)" : "rgba(51, 199, 173, 0.45)";
-  ctx.beginPath();
-  ctx.arc(width - 36, 34, live ? 7 : 5, 0, Math.PI * 2);
-  ctx.fill();
+  // Live wave: iMessage/Telegram style vertical capsule bars (spectrum visualizer)
+  const barCount = 26;
+  const barWidth = 3;
+  const barSpacing = 4;
+  const totalWidth = barCount * barWidth + (barCount - 1) * barSpacing;
+  const startX = (width - totalWidth) / 2;
+  
+  // Split buffer into segments for each frequency bar
+  const segmentLength = Math.floor(buffer.length / barCount);
+  
+  // Create a beautiful vertical gradient for the bars
+  const gradient = ctx.createLinearGradient(0, middle - 16, 0, middle + 16);
+  gradient.addColorStop(0, "rgba(99, 102, 241, 0.55)"); // Indigo
+  gradient.addColorStop(0.5, "rgba(6, 182, 212, 0.55)"); // Cyan
+  gradient.addColorStop(1, "rgba(99, 102, 241, 0.55)"); // Indigo
+  ctx.fillStyle = gradient;
+
+  for (let index = 0; index < barCount; index++) {
+    // Calculate average amplitude in this segment
+    let sum = 0;
+    const startIdx = index * segmentLength;
+    for (let j = 0; j < segmentLength; j++) {
+      sum += Math.abs(buffer[startIdx + j] - 128);
+    }
+    const amplitude = sum / segmentLength; // 0 to 128
+    
+    // Map index to a bell curve so edges are naturally slightly smaller
+    const normalizedX = index / (barCount - 1);
+    const envelope = 0.35 + 0.65 * Math.sin(normalizedX * Math.PI);
+    
+    // Calculate bar height: min 4px, max 30px
+    const maxBarHeight = height * 0.65;
+    // Add a small constant wave bounce effect even in silence to show life
+    const volumeFactor = Math.min(amplitude / 12, 1.3);
+    const targetHeight = 4 + (volumeFactor + 0.15) * maxBarHeight * envelope;
+    
+    const x = startX + index * (barWidth + barSpacing);
+    const y = middle - targetHeight / 2;
+    
+    // Draw capsule bar
+    ctx.beginPath();
+    ctx.roundRect(x, y, barWidth, targetHeight, barWidth / 2);
+    ctx.fill();
+  }
 }

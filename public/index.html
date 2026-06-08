@@ -4,40 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Luyện giao tiếp AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
   <body>
-    <header class="school-header">
-      <div class="brand-block">
-        <img src="/assets/coach-avatar.png" alt="" class="brand-avatar">
-        <div>
-          <strong>topID Speak</strong>
-          <span>Luyện nói cùng AI mỗi ngày</span>
-        </div>
-      </div>
-      <nav class="student-nav" aria-label="Điều hướng">
-        <a href="#practice">Luyện nói</a>
-        <a href="#transcript">Transcript</a>
-        <a href="#settings">Cài đặt</a>
-      </nav>
-      <div class="status-cluster">
-        <span id="serverStatus" class="status-pill status-wait">Đang kiểm tra</span>
-        <span id="connectionStatus" class="status-pill">Chưa kết nối</span>
-      </div>
-    </header>
+    <!-- Background Ambient Orbs -->
+    <div class="space-ambient" aria-hidden="true">
+      <div class="glowing-orb orb-1"></div>
+      <div class="glowing-orb orb-2"></div>
+      <div class="glowing-orb orb-3"></div>
+    </div>
 
     <div class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">AI speaking class</p>
-          <h1>Hôm nay mình nói tiếng Anh nhé</h1>
-        </div>
-        <div class="streak-card" aria-label="Tiến độ học">
-          <strong>Buổi 1</strong>
-          <span>14 thử thách nhỏ</span>
-        </div>
-      </header>
-
       <main class="workspace">
         <aside id="settings" class="control-panel" aria-label="Cấu hình buổi luyện">
           <div class="coach-card">
@@ -125,6 +106,7 @@
               </div>
             </div>
           </section>
+          <button id="saveSettingsBtn" class="save-settings-button" type="button">Lưu cấu hình</button>
         </aside>
 
         <section id="practice" class="practice-stage" aria-label="Buổi hội thoại">
@@ -136,7 +118,13 @@
             <div class="lesson-progress" aria-hidden="true">
               <span></span>
             </div>
-            <button id="clearBtn" class="small-button" type="button">Xóa transcript</button>
+            <div class="stage-actions">
+              <div class="status-cluster">
+                <span id="serverStatus" class="status-pill status-wait">Đang kiểm tra</span>
+                <span id="connectionStatus" class="status-pill">Chưa kết nối</span>
+              </div>
+              <button id="clearBtn" class="small-button" type="button">Xóa transcript</button>
+            </div>
           </div>
 
           <div class="conversation-board">
@@ -176,17 +164,16 @@
               Transcript
             </button>
             <button id="startBtn" class="primary-action" type="button">
-              <span class="icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
-              </span>
-              <span id="startBtnLabel">Bắt đầu nói</span>
-            </button>
-            <div class="voice-surface dock-wave" aria-label="Âm lượng mic">
-              <canvas id="waveform" width="180" height="54"></canvas>
-              <div class="meter-row" aria-hidden="true">
-                <span></span><span></span><span></span><span></span><span></span>
+              <div class="btn-wave-container" aria-hidden="true">
+                <canvas id="waveform" width="220" height="48"></canvas>
               </div>
-            </div>
+              <div class="btn-content">
+                <span class="icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
+                </span>
+                <span id="startBtnLabel">Bắt đầu nói</span>
+              </div>
+            </button>
             <button id="muteBtn" class="icon-button" type="button" aria-label="Tắt mic" title="Tắt mic" disabled>
               <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>
             </button>
