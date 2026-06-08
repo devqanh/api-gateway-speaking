@@ -680,7 +680,6 @@ input[type="range"] {
   gap: 16px;
   min-height: 0;
   padding: 20px 18px 100px;
-  scroll-behavior: smooth;
   background: #fdfdfd;
 }
 

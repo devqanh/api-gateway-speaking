@@ -59,12 +59,11 @@ let animationId = null;
 let muted = false;
 let userDraft = null;
 let assistantDraft = null;
-let assistantDraftResponseId = null;
+let assistantDraftItemId = null;
 let assistantDeltaSource = null;
 let previewAudio = null;
 const voicePreviewCache = new Map();
-const completedAssistantResponses = new Set();
-const recentAssistantTexts = [];
+const completedAssistantItems = new Set();
 
 loadSettings();
 checkServer();
@@ -567,12 +566,12 @@ function appendAssistantDelta(payload) {
     return;
   }
 
-  const responseId = getResponseId(payload);
+  const itemId = payload.item_id || "active";
   const source = getAssistantEventSource(payload.type);
 
-  if (!assistantDraft || assistantDraftResponseId !== responseId) {
+  if (!assistantDraft || assistantDraftItemId !== itemId) {
     assistantDraft = appendMessage("assistant", "AI", "");
-    assistantDraftResponseId = responseId;
+    assistantDraftItemId = itemId;
     assistantDeltaSource = source;
   } else if (assistantDeltaSource && assistantDeltaSource !== source) {
     return;
@@ -581,12 +580,12 @@ function appendAssistantDelta(payload) {
   const paragraph = assistantDraft.querySelector("p");
   paragraph.textContent += delta;
   setLiveCaption("assistant", paragraph.textContent);
-  scrollTranscript(assistantDraft);
+  scrollTranscript(assistantDraft, true);
 }
 
 function finishAssistantDraft(payload) {
   const finalText = payload.transcript || payload.text || "";
-  const responseId = getResponseId(payload);
+  const itemId = payload.item_id || "active";
   const source = getAssistantEventSource(payload.type);
 
   if (assistantDeltaSource && assistantDeltaSource !== source) {
@@ -594,11 +593,11 @@ function finishAssistantDraft(payload) {
   }
 
   if (!assistantDraft && finalText) {
-    if (isDuplicateAssistantCompletion(responseId, finalText)) {
+    if (isDuplicateAssistantCompletion(itemId, finalText)) {
       return;
     }
     assistantDraft = appendMessage("assistant", "AI", finalText);
-    assistantDraftResponseId = responseId;
+    assistantDraftItemId = itemId;
     assistantDeltaSource = source;
   }
 
@@ -610,11 +609,24 @@ function finishAssistantDraft(payload) {
   }
   const finishedDraft = assistantDraft;
   const completedText = finishedDraft ? finishedDraft.querySelector("p").textContent : finalText;
-  rememberAssistantCompletion(responseId, completedText);
+  rememberAssistantCompletion(itemId, completedText);
   assistantDraft = null;
-  assistantDraftResponseId = null;
+  assistantDraftItemId = null;
   assistantDeltaSource = null;
   scrollTranscript(finishedDraft);
+}
+
+function extractItemTranscript(item) {
+  const content = Array.isArray(item.content) ? item.content : [];
+  const chunks = [];
+  for (const part of content) {
+    if (part.transcript) {
+      chunks.push(part.transcript);
+    } else if (part.text) {
+      chunks.push(part.text);
+    }
+  }
+  return chunks.join(" ").trim();
 }
 
 function finishFromResponse(response) {
@@ -622,28 +634,41 @@ function finishFromResponse(response) {
     return;
   }
 
-  const responseId = response.id || assistantDraftResponseId || "active";
-  const text = extractTranscript(response);
+  const output = Array.isArray(response.output) ? response.output : [];
+  for (const item of output) {
+    if (item.role !== "assistant") {
+      continue;
+    }
 
-  if (assistantDraft) {
-    if (text) {
+    const itemId = item.id;
+    const text = extractItemTranscript(item);
+    if (!text) {
+      continue;
+    }
+
+    if (assistantDraft && assistantDraftItemId === itemId) {
       assistantDraft.querySelector("p").textContent = text;
       setLiveCaption("assistant", text);
-      rememberAssistantCompletion(responseId, text);
+      rememberAssistantCompletion(itemId, text);
+      const finishedDraft = assistantDraft;
+      assistantDraft = null;
+      assistantDraftItemId = null;
+      assistantDeltaSource = null;
+      scrollTranscript(finishedDraft);
+    } else if (!isDuplicateAssistantCompletion(itemId, text)) {
+      const message = appendMessage("assistant", "AI", text);
+      setLiveCaption("assistant", text);
+      rememberAssistantCompletion(itemId, text);
+      scrollTranscript(message);
     }
-    const finishedDraft = assistantDraft;
-    assistantDraft = null;
-    assistantDraftResponseId = null;
-    assistantDeltaSource = null;
-    scrollTranscript(finishedDraft);
-    return;
   }
 
-  if (text && !isDuplicateAssistantCompletion(responseId, text)) {
-    const message = appendMessage("assistant", "AI", text);
-    setLiveCaption("assistant", text);
-    rememberAssistantCompletion(responseId, text);
-    scrollTranscript(message);
+  if (assistantDraft) {
+    const finishedDraft = assistantDraft;
+    assistantDraft = null;
+    assistantDraftItemId = null;
+    assistantDeltaSource = null;
+    scrollTranscript(finishedDraft);
   }
 }
 
@@ -659,7 +684,7 @@ function appendUserDelta(delta) {
   const paragraph = userDraft.querySelector("p");
   paragraph.textContent += delta;
   setLiveCaption("user", paragraph.textContent);
-  scrollTranscript(userDraft);
+  scrollTranscript(userDraft, true);
 }
 
 function finishUserTranscript(finalText) {
@@ -726,7 +751,7 @@ function clearTranscript() {
 function clearDraft() {
   userDraft = null;
   assistantDraft = null;
-  assistantDraftResponseId = null;
+  assistantDraftItemId = null;
   assistantDeltaSource = null;
   clearCurrentMessage();
 }
@@ -756,7 +781,14 @@ function markCurrentMessage(message) {
   message.classList.add("is-current");
 }
 
+let currentScrollAnimationId = null;
+
 function smoothScrollTo(element, target, duration = 400) {
+  if (currentScrollAnimationId) {
+    cancelAnimationFrame(currentScrollAnimationId);
+    currentScrollAnimationId = null;
+  }
+
   const start = element.scrollTop;
   const change = target - start;
   const startTime = performance.now();
@@ -771,26 +803,54 @@ function smoothScrollTo(element, target, duration = 400) {
     element.scrollTop = start + change * ease;
 
     if (progress < 1) {
-      requestAnimationFrame(animateScroll);
+      currentScrollAnimationId = requestAnimationFrame(animateScroll);
+    } else {
+      currentScrollAnimationId = null;
     }
   }
 
-  requestAnimationFrame(animateScroll);
+  currentScrollAnimationId = requestAnimationFrame(animateScroll);
 }
 
-function scrollTranscript(message) {
+function scrollTranscript(message, isDelta = false) {
   if (message) {
     markCurrentMessage(message);
   }
 
-  requestAnimationFrame(() => {
+  // Use a short timeout to ensure the DOM has completed layout and calculated new heights
+  setTimeout(() => {
     const transcript = elements.transcript;
     const targetScroll = transcript.scrollHeight - transcript.clientHeight;
     
-    if (Math.abs(transcript.scrollTop - targetScroll) > 4) {
-      smoothScrollTo(transcript, targetScroll, 400);
+    // 1. Scroll the internal transcript container
+    if (isDelta) {
+      if (currentScrollAnimationId) {
+        cancelAnimationFrame(currentScrollAnimationId);
+        currentScrollAnimationId = null;
+      }
+      transcript.scrollTop = targetScroll;
+    } else {
+      if (Math.abs(transcript.scrollTop - targetScroll) > 4) {
+        smoothScrollTo(transcript, targetScroll, 250);
+      }
     }
-  });
+
+    // 2. Scroll the main browser window if the whole page is scrollable (e.g. mobile stacked view)
+    const docScrollHeight = document.documentElement.scrollHeight;
+    const viewportHeight = window.innerHeight;
+    const maxWindowScroll = docScrollHeight - viewportHeight;
+
+    if (maxWindowScroll > 10) {
+      if (isDelta) {
+        window.scrollTo(0, maxWindowScroll);
+      } else {
+        window.scrollTo({
+          top: maxWindowScroll,
+          behavior: "smooth"
+        });
+      }
+    }
+  }, isDelta ? 10 : 50);
 }
 
 function getResponseId(payload) {
@@ -807,26 +867,18 @@ function getAssistantEventSource(type) {
   return "text";
 }
 
-function normalizeAssistantText(text) {
-  return (text || "").replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-function rememberAssistantCompletion(responseId, text) {
-  const normalized = normalizeAssistantText(text);
-  if (!normalized) {
+function rememberAssistantCompletion(itemId, text) {
+  if (!itemId || itemId === "active") {
     return;
   }
-
-  completedAssistantResponses.add(responseId);
-  recentAssistantTexts.push(normalized);
-  if (recentAssistantTexts.length > 8) {
-    recentAssistantTexts.shift();
-  }
+  completedAssistantItems.add(itemId);
 }
 
-function isDuplicateAssistantCompletion(responseId, text) {
-  const normalized = normalizeAssistantText(text);
-  return completedAssistantResponses.has(responseId) || recentAssistantTexts.includes(normalized);
+function isDuplicateAssistantCompletion(itemId, text) {
+  if (!itemId || itemId === "active") {
+    return false;
+  }
+  return completedAssistantItems.has(itemId);
 }
 
 function setBusy(isBusy) {
