@@ -1028,6 +1028,8 @@ input[type="range"] {
 
   .control-panel {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 
@@ -1062,8 +1064,16 @@ input[type="range"] {
     text-align: center;
     gap: 12px;
   }
+  
+  .lesson-progress {
+    width: 100%;
+    max-width: 320px;
+    margin: 10px 0;
+  }
+  
   .stage-actions {
     flex-direction: column;
+    align-items: center;
     gap: 8px;
   }
 
@@ -1082,11 +1092,6 @@ input[type="range"] {
   .practice-dock {
     flex-wrap: wrap;
     padding: 12px;
-  }
-
-  .dock-wave {
-    flex-basis: 96px;
-    width: 96px;
   }
 }
 
@@ -1110,11 +1115,6 @@ input[type="range"] {
     display: grid;
     grid-template-columns: 1fr 44px 44px;
     gap: 8px;
-  }
-
-  .dock-wave {
-    grid-column: 1 / -1;
-    width: 100%;
   }
 
   .dock-secondary {
